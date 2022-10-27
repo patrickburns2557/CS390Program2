@@ -13,18 +13,18 @@ Program: My Shell
 #include "sys/stat.h"
 #include "unistd.h"
 #include "wait.h"
-#define MAX_TOKENS 32
-#define MAX_TOKEN_LENGTH 256
+#define MAX_TOKENS 128
 
 /* Function Prototypes */
-void command_echo(char* tokens[MAX_TOKEN_LENGTH], int numTokens);
-void command_ps1(char tokens[MAX_TOKENS][MAX_TOKEN_LENGTH], int numTokens);
-void command_cat(char tokens[MAX_TOKENS][MAX_TOKEN_LENGTH], int numTokens);
-void command_cp(char tokens[MAX_TOKENS][MAX_TOKEN_LENGTH], int numTokens);
-void command_rm(char tokens[MAX_TOKENS][MAX_TOKEN_LENGTH], int numTokens);
-void command_mkdir(char tokens[MAX_TOKENS][MAX_TOKEN_LENGTH], int numTokens);
-void command_rmdir(char tokens[MAX_TOKENS][MAX_TOKEN_LENGTH], int numTokens);
-
+void command_echo(char* tokens[MAX_TOKENS], int numTokens);
+void command_ps1(char* tokens[MAX_TOKENS], int numTokens);
+void command_cat(char* tokens[MAX_TOKENS], int numTokens);
+void command_cp(char* tokens[MAX_TOKENS], int numTokens);
+void command_rm(char* tokens[MAX_TOKENS], int numTokens);
+void command_mkdir(char* tokens[MAX_TOKENS], int numTokens);
+void command_rmdir(char* tokens[MAX_TOKENS], int numTokens);
+void command_exec(char* tokens[MAX_TOKENS], int numTokens);
+char* getPath(char* input);
 
 
 /* Global Variable */
@@ -35,69 +35,10 @@ int main(int argc, char* argv[])
 {
 	char userInput[1024];
 	char* token;
-	char* tokens[MAX_TOKEN_LENGTH];
+	char* tokens[MAX_TOKENS];
 	int numTokens = 0;
 	int i = 0;
 	
-	/*
-	char pathArray[1000][1000];
-	char* pathToken;
-	int numPath = 0;
-	char ifconfigPath[512];
-	
-	printf("\n");
-	
-	const char* path;
-	path = getenv("PATH");
-	printf("Full path:\n%s\n\n", path);
-	pathToken = strtok(path, ":");
-	while(pathToken != NULL)
-	{
-		strcpy(pathArray[numPath++], pathToken);
-		pathToken = strtok(NULL, ":");
-	}
-	strcpy(ifconfigPath, pathArray[3]);
-	strcat(ifconfigPath, "/");
-	strcat(ifconfigPath, "uname");
-	puts(ifconfigPath);
-	
-
-	for(i = 0; i < numPath; i++)
-	{
-		printf("%2d: %s\n", i, pathArray[i]);
-	}
-	char* testArgs[100];
-	//strcpy(testArgs[0], ifconfigPath);
-	//strcpy(testArgs[0], "ifconfig");
-	testArgs[0] = "uname";
-	testArgs[1] = "-a";
-	//testArgs[1] = NULL;
-	
-
-	switch(fork())
-	{
-		case -1: exit(100);
-		case 0: 
-			//if(execv(ifconfigPath, &testArgs) < 0)
-			if(execv(ifconfigPath, testArgs) < 0)
-			{
-				fprintf(stderr, "error bruh");
-				exit(200);
-			}
-		default:
-			wait(NULL);
-
-	}
-
-	
-
-	
-	printf("\n");
-	*/
-	
-	
-
-
 	do
 	{
 		/* reset tokens back to zero for next input */
@@ -107,14 +48,20 @@ int main(int argc, char* argv[])
 		printf("%s ", ps1);
 		fgets(userInput, 1024, stdin);
 
-
 		/* tokenize and store input into tokens array */
 		token = strtok(userInput, " ");
 		while(token != NULL)
 		{
-			//strcpy(tokens[numTokens++], token);
-			tokens[numTokens++] = token;
-			token = strtok(NULL, " ");
+			if(numTokens < (MAX_TOKENS - 1))
+			{
+				tokens[numTokens++] = token;
+				token = strtok(NULL, " ");
+			}
+			else
+			{
+				fprintf(stderr, "Too many arguments, max is: %d\n", MAX_TOKENS);
+				exit(-1);
+			}
 		}
 
 		/* Replace the newline character in the last token with a 0 */
@@ -126,21 +73,7 @@ int main(int argc, char* argv[])
 				break;
 			}
 		}
-		tokens[numTokens] = NULL;
-		switch(fork())
-		{
-			case -1: exit(100);
-			case 0: 
-				//if(execv(ifconfigPath, &testArgs) < 0)
-				if(execvp(tokens[0], tokens) < 0)
-				{
-					fprintf(stderr, "error bruh");
-					exit(200);
-				}
-			default:
-				wait(NULL);
-
-		}
+		
 
 		if (strcmp(tokens[0], "echo") == 0)
 		{
@@ -176,8 +109,7 @@ int main(int argc, char* argv[])
 		}
 		else
 		{
-			printf("Invalid command.\n");
-			printf("Valid commands: echo, PS1, cat, cp, rm, mkdir, rmdir, exit\n");
+			command_exec(tokens, numTokens);
 		}
 
 	} while (1);
@@ -186,7 +118,7 @@ int main(int argc, char* argv[])
 }
 
 /* Function handles the echo command */
-void command_echo(char* tokens[MAX_TOKEN_LENGTH], int numTokens)
+void command_echo(char* tokens[MAX_TOKENS], int numTokens)
 {
 	bool nArg = false; /* used to determine whether to apply -n */
 	int i = 0; /* declared here since using -ansi disallows var declarations inside for loops */
@@ -221,7 +153,7 @@ void command_echo(char* tokens[MAX_TOKEN_LENGTH], int numTokens)
 }
 
 /* Function handles the PS1 command */
-void command_ps1(char tokens[128][256], int numTokens)
+void command_ps1(char* tokens[MAX_TOKENS], int numTokens)
 {
 	char newPs1[1024] = "";
 	
@@ -243,7 +175,7 @@ void command_ps1(char tokens[128][256], int numTokens)
 }
 
 /* Function handles the cat command */
-void command_cat(char tokens[128][256], int numTokens)
+void command_cat(char* tokens[MAX_TOKENS], int numTokens)
 {
 	FILE *inputFile;
 	int i = 0;
@@ -269,7 +201,7 @@ void command_cat(char tokens[128][256], int numTokens)
 }
 
 /* Function handles the cp command */
-void command_cp(char tokens[128][256], int numTokens)
+void command_cp(char* tokens[MAX_TOKENS], int numTokens)
 {
 	FILE *source;
 	FILE *destination;
@@ -307,7 +239,7 @@ void command_cp(char tokens[128][256], int numTokens)
 }
 
 /* Function handles the rm command */
-void command_rm(char tokens[128][256], int numTokens)
+void command_rm(char* tokens[MAX_TOKENS], int numTokens)
 {
 	/* remove file and print results of operation */
 	if(remove(tokens[1]) == 0)
@@ -321,7 +253,7 @@ void command_rm(char tokens[128][256], int numTokens)
 }
 
 /* Function handles the mkdir command */
-void command_mkdir(char tokens[128][256], int numTokens)
+void command_mkdir(char* tokens[MAX_TOKENS], int numTokens)
 {
 	/* uses stat call to see if the directory exists or not. If it doesn't, it creates the directory */
 	struct stat st = {0};
@@ -338,7 +270,7 @@ void command_mkdir(char tokens[128][256], int numTokens)
 }
 
 /* Function handles the rmdir command */
-void command_rmdir(char tokens[128][256], int numTokens)
+void command_rmdir(char* tokens[MAX_TOKENS], int numTokens)
 {
 	/* remove folder and print results of operation */
 	if(remove(tokens[1]) == 0)
@@ -349,4 +281,79 @@ void command_rmdir(char tokens[128][256], int numTokens)
 	{
 		printf("Cannot remove '%s' : Either no such directory, or directory is not empty\n", tokens[1]);
 	}
+}
+
+/* Function handles executing external programs*/
+void command_exec(char* tokens[MAX_TOKENS], int numTokens)
+{
+	/* puts a NULL pointer at the end of the argument array
+	   because execv( ) expects this to appear */
+	tokens[numTokens] = NULL;
+	char* path;
+
+	/* if a '/' is found anywhere in the input command, it suggests it's an absolute path*/
+	/* don't execute getPath if an absolute path to a program is input */
+	if(strchr(tokens[0], '/') != NULL)
+	{
+		path = tokens[0];
+	}
+	else
+	{
+		path = getPath(tokens[0]);
+	}
+	
+	/* if getPath returns "NOT FOUND" the child process will
+	simply print that the command wasn't found and exit*/
+	switch(fork())
+	{
+		case -1: exit(100);
+		case 0: 
+			if(execv(path, tokens) < 0)
+			{
+				fprintf(stderr, "Command not found\n");
+				exit(200);
+			}
+		default:
+			wait(NULL); /* wait for the forked process to finish before continuing */
+	}
+	
+}
+
+/* Function handles finding external programs and returns their path if found
+   if not found, returns the string "NOT FOUND"*/
+char* getPath(char* input)
+{
+	char path[2048];
+	char *pathToken;
+	char temppath[128], pathArray[100][1000];
+	int numPaths = 0, i;
+	
+	strcpy(path, getenv("PATH"));
+
+	/* tokenize the returned path variable */
+	pathToken = strtok(path, ":");
+	while(pathToken != NULL)
+	{
+		strcpy(pathArray[numPaths++], pathToken);
+		pathToken = strtok(NULL, ":");
+	}
+	
+	/* iterate through the path variables, appending the name of the program to the end of each
+	   and test if the program is found. Return the path of the program if found*/
+	for(i = 0; i < numPaths; i++)
+	{
+		strcpy(temppath, pathArray[i]);
+		strcat(temppath, "/");
+		strcat(temppath, input);
+		if(access(temppath, F_OK) == 0)
+		{
+			/* must copy the path to a pointer because the array is stored
+			   on the stack and will be destroyed after the function ends*/
+			pathToken = temppath; 
+			return pathToken;
+		}
+	}
+	/* return if program not found*/
+	return "NOT FOUND";
+
 }
