@@ -12,11 +12,12 @@ Program: My Shell
 #include "stdbool.h"
 #include "sys/stat.h"
 #include "unistd.h"
+#include "wait.h"
 #define MAX_TOKENS 32
 #define MAX_TOKEN_LENGTH 256
 
 /* Function Prototypes */
-void command_echo(char tokens[MAX_TOKENS][MAX_TOKEN_LENGTH], int numTokens);
+void command_echo(char* tokens[MAX_TOKEN_LENGTH], int numTokens);
 void command_ps1(char tokens[MAX_TOKENS][MAX_TOKEN_LENGTH], int numTokens);
 void command_cat(char tokens[MAX_TOKENS][MAX_TOKEN_LENGTH], int numTokens);
 void command_cp(char tokens[MAX_TOKENS][MAX_TOKEN_LENGTH], int numTokens);
@@ -34,16 +35,18 @@ int main(int argc, char* argv[])
 {
 	char userInput[1024];
 	char* token;
-	char tokens[MAX_TOKENS][MAX_TOKEN_LENGTH];
+	char* tokens[MAX_TOKEN_LENGTH];
 	int numTokens = 0;
 	int i = 0;
+	
+	/*
 	char pathArray[1000][1000];
 	char* pathToken;
 	int numPath = 0;
-
+	char ifconfigPath[512];
 	
 	printf("\n");
-
+	
 	const char* path;
 	path = getenv("PATH");
 	printf("Full path:\n%s\n\n", path);
@@ -53,16 +56,47 @@ int main(int argc, char* argv[])
 		strcpy(pathArray[numPath++], pathToken);
 		pathToken = strtok(NULL, ":");
 	}
-
+	strcpy(ifconfigPath, pathArray[3]);
+	strcat(ifconfigPath, "/");
+	strcat(ifconfigPath, "uname");
+	puts(ifconfigPath);
 	
 
 	for(i = 0; i < numPath; i++)
 	{
 		printf("%2d: %s\n", i, pathArray[i]);
 	}
+	char* testArgs[100];
+	//strcpy(testArgs[0], ifconfigPath);
+	//strcpy(testArgs[0], "ifconfig");
+	testArgs[0] = "uname";
+	testArgs[1] = "-a";
+	//testArgs[1] = NULL;
+	
+
+	switch(fork())
+	{
+		case -1: exit(100);
+		case 0: 
+			//if(execv(ifconfigPath, &testArgs) < 0)
+			if(execv(ifconfigPath, testArgs) < 0)
+			{
+				fprintf(stderr, "error bruh");
+				exit(200);
+			}
+		default:
+			wait(NULL);
+
+	}
+
+	
 
 	
 	printf("\n");
+	*/
+	
+	
+
 
 	do
 	{
@@ -78,7 +112,8 @@ int main(int argc, char* argv[])
 		token = strtok(userInput, " ");
 		while(token != NULL)
 		{
-			strcpy(tokens[numTokens++], token);
+			//strcpy(tokens[numTokens++], token);
+			tokens[numTokens++] = token;
 			token = strtok(NULL, " ");
 		}
 
@@ -91,7 +126,21 @@ int main(int argc, char* argv[])
 				break;
 			}
 		}
+		tokens[numTokens] = NULL;
+		switch(fork())
+		{
+			case -1: exit(100);
+			case 0: 
+				//if(execv(ifconfigPath, &testArgs) < 0)
+				if(execvp(tokens[0], tokens) < 0)
+				{
+					fprintf(stderr, "error bruh");
+					exit(200);
+				}
+			default:
+				wait(NULL);
 
+		}
 
 		if (strcmp(tokens[0], "echo") == 0)
 		{
@@ -137,7 +186,7 @@ int main(int argc, char* argv[])
 }
 
 /* Function handles the echo command */
-void command_echo(char tokens[MAX_TOKENS][MAX_TOKEN_LENGTH], int numTokens)
+void command_echo(char* tokens[MAX_TOKEN_LENGTH], int numTokens)
 {
 	bool nArg = false; /* used to determine whether to apply -n */
 	int i = 0; /* declared here since using -ansi disallows var declarations inside for loops */
